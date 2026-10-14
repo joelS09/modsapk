@@ -46,6 +46,8 @@ nav.desk button{padding:8px 14px;border-radius:999px;color:var(--muted);font-wei
 .icon-btn{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:var(--neon);border:1px solid var(--line);transition:.2s}
 .icon-btn:hover{background:var(--neon-dim);box-shadow:0 0 16px var(--neon-dim)}
 .icon-btn svg{width:20px;height:20px}
+.searchrow{padding-bottom:10px}
+.searchrow .search{max-width:none;width:100%;flex:none}
 .search{display:flex;align-items:center;gap:8px;height:42px;border:1px solid var(--line);border-radius:999px;padding-inline:14px;background:var(--surface);min-width:0;flex:1;max-width:340px;transition:.2s}
 .search:focus-within{border-color:var(--neon);box-shadow:0 0 0 3px var(--neon-dim)}
 .search svg{width:18px;height:18px;color:var(--neon);flex:none}
@@ -132,6 +134,11 @@ img.shot{height:min(81vw,338px);width:auto;min-width:90px;max-width:86vw;aspect-
 .lcard small{display:block;color:var(--muted);font-size:13px}
 .get{flex:none;padding:7px 16px;border-radius:999px;border:1px solid var(--neon);color:var(--neon);font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase;transition:.2s}
 .lcard:hover .get{background:var(--neon);color:var(--on-neon)}
+.search .clr{display:none;flex:none;width:22px;height:22px;border-radius:50%;color:var(--muted);font-size:18px;line-height:1}
+.search .clr.on{display:block}
+.search input::-webkit-search-cancel-button{display:none}
+body.searching .chips,body.searching .hero,body.searching .dots,body.searching section.blk:not(#resultados){display:none}
+#resultados{display:none}body.searching #resultados{display:block}
 .empty{color:var(--muted);padding:28px;border:1px dashed var(--line);border-radius:18px;text-align:center}
 
 footer{margin-top:64px;border-top:1px solid var(--line);padding-block:28px 40px;color:var(--muted);font-size:14px}
@@ -221,7 +228,9 @@ footer button{color:var(--neon);font-weight:700}
       <button data-contact>Contactar</button>
     </nav>
     <div class="sp"></div>
-    <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="q" type="search" placeholder="Buscar apps y juegos" autocomplete="off"></label>
+  </div>
+  <div class="wrap searchrow">
+    <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="q" type="search" placeholder="Buscar apps y juegos" autocomplete="off" enterkeyhint="search"><button type="button" class="clr" id="qclr" aria-label="Borrar búsqueda">×</button></label>
   </div>
 </header>
 
@@ -240,6 +249,11 @@ footer button{color:var(--neon);font-weight:700}
     <div class="chips" id="chips" role="tablist" aria-label="Categorías"></div>
     <div class="hero" id="hero" aria-label="Destacados"></div>
     <div class="dots" id="dots"></div>
+
+    <section class="blk" id="resultados" aria-live="polite">
+      <div class="sec-h"><h2 id="resTitle">Resultados</h2></div>
+      <div class="grid" id="res"></div>
+    </section>
 
     <section class="blk" id="tendencias">
       <div class="sec-h"><span class="live"></span><h2>Tendencias</h2><svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div>
@@ -355,13 +369,21 @@ function renderChips(){
   $("#chips").innerHTML = cats.map(c => `<button class="chip ${c===cat?"on":""}" data-cat="${c}">${c}</button>`).join("");
 }
 function passes(a){
-  if (query && !norm(a.name+" "+a.sub).includes(norm(query))) return false;
+  if (query && !norm(a.name).includes(norm(query))) return false;
   if (cat==="Apps") return a.cat==="Apps";
   if (cat==="Juegos") return a.cat==="Juegos";
   if (cat==="Tendencias") return a.trending;
   return true;
 }
 function render(){
+  const searching = !!query;
+  document.body.classList.toggle("searching", searching);
+  if (searching){
+    const found = APPS.filter(passes);
+    $("#resTitle").textContent = found.length ? `${found.length} resultado${found.length>1?"s":""} para “${query}”` : "Sin resultados";
+    $("#res").innerHTML = found.map(a => `<button class="lcard" data-open="${a.id}">${ico(a,"s")}<div class="t"><strong>${a.name}</strong><small>${a.cat} · ${a.size} · ★ ${a.rating}</small></div><span class="get">Ver</span></button>`).join("") || `<div class="empty">No encontramos ninguna app llamada “${query}”.</div>`;
+    return;
+  }
   const list = APPS.filter(passes);
   const feat = list.filter(a => a.featured);
   $("#hero").innerHTML = (feat.length?feat:list).map(a => `
@@ -456,7 +478,14 @@ document.addEventListener("click", e => {
   }
 });
 $("#back").onclick = closeDetail;
-$("#q").addEventListener("input", e => { query = e.target.value.trim(); render(); });
+let qt;
+$("#q").addEventListener("input", e => {
+  $("#qclr").classList.toggle("on", !!e.target.value);
+  clearTimeout(qt);
+  qt = setTimeout(() => { query = e.target.value.trim(); render(); window.scrollTo({top:0}); }, 120);
+});
+$("#qclr").onclick = () => { const q = $("#q"); q.value = ""; q.dispatchEvent(new Event("input")); q.focus(); };
+$("#q").addEventListener("keydown", e => { if (e.key==="Escape") $("#qclr").click(); });
 $("#hero").addEventListener("scroll", () => {
   const h = $("#hero"), n = h.children.length; if(!n) return;
   const i = Math.round(h.scrollLeft / (h.scrollWidth - h.clientWidth || 1) * (n-1));
