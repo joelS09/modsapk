@@ -46,7 +46,7 @@ const li=s=>new Promise((o,n)=>{const i=new Image();i.onload=()=>o(i);i.onerror=
 async function shrink(src,max,q=.72){const i=await li(src),k=Math.min(1,max/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.round(i.width*k);c.height=Math.round(i.height*k);c.getContext('2d').drawImage(i,0,0,c.width,c.height);let o=c.toDataURL('image/webp',q);if(!o.startsWith('data:image/webp'))o=c.toDataURL('image/jpeg',q);return o.length<src.length?o:src}
 const LIM={img:192,banner:800,shot:640,logo:128};
 async function optimize(){let before=size(),n=0;for(const a of apps){n++;toast(`Optimizando ${n}/${apps.length}…`,60000);
- try{if(a.img)a.img=await shrink(a.img,LIM.img);if(a.banner)a.banner=await shrink(a.banner,LIM.banner);if(a.shots)a.shots=await Promise.all(a.shots.map(s=>shrink(s,LIM.shot)))}catch(_){}}
+ try{a.img=await sh(a.img,LIM.img);a.banner=await sh(a.banner,LIM.banner);if(a.shots)a.shots=await Promise.all(a.shots.map(x=>sh(x,LIM.shot)))}catch(_){}}
  mark();toast(`Listo: de ${(before/1048576).toFixed(1)} MB a ${(size()/1048576).toFixed(1)} MB`,5000);draw()}
 /* ---- vistas ---- */
 function draw(){document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected',b.dataset.t===tab));stat();$('#m').innerHTML=tab==='apps'?vApps():tab==='site'?vSite():vPub()}
@@ -90,28 +90,34 @@ function vPub(){const f=build();return`<div class="box"><b>Dirección del sitio<
 <label class="ck"><input type="checkbox" data-gk ${gh.keep?'checked':''}> Recordar el token solo en este navegador</label>
 <button class="btn pri" id="pub" style="width:100%;margin-top:12px">Publicar ahora</button>
 <p class="mut">Crea un token «fine-grained» en GitHub → Settings → Developer settings, solo para este repositorio, con permiso <i>Contents: Read and write</i>. El token nunca se guarda en los archivos del sitio.</p></div>
-<div class="box"><b>Archivos a subir</b><div class="list">${f.map(x=>`<div class="mut">${x.name} · ${(x.data.length/1024).toFixed(0)} KB</div>`).join('')}</div>
+<div class="box"><b>Archivos a subir</b><div class="list">${f.filter(x=>!x.b64).map(x=>`<div class="mut">${x.name} · ${(x.data.length/1024).toFixed(0)} KB</div>`).join('')}<div class="mut">${f.filter(x=>x.b64).length} imágenes nuevas → carpeta img/ (${(f.filter(x=>x.b64).reduce((n,x)=>n+x.b64.length*.75,0)/1048576).toFixed(1)} MB)</div></div>
 <button class="btn pri" id="zip" style="width:100%">Descargar todo (.zip)</button></div>
-<div class="box mut"><b style="color:#e8ebf2">Pasos</b><ol style="padding-left:20px"><li>Descarga el .zip y descomprímelo.</li><li>Sube todos los archivos al repositorio de GitHub (reemplazando los anteriores).</li><li>Espera 1–2 minutos y entra al sitio.</li><li>En Google Search Console envía <code>${esc(cfg.siteUrl)}sitemap.xml</code>.</li></ol></div>`}
+<div class="box mut"><b style="color:#e8ebf2">Pasos</b><ol style="padding-left:20px"><li>Descarga el .zip y descomprímelo (incluye la carpeta <code>img/</code>).</li><li>Sube todos los archivos al repositorio de GitHub (reemplazando los anteriores).</li><li>Espera 1–2 minutos y entra al sitio.</li><li>En Google Search Console envía <code>${esc(cfg.siteUrl)}sitemap.xml</code>.</li></ol></div>`}
 /* ---- exportar ---- */
-function build(){const per=12e6,pages=[];let cur=[],sz=0;for(const a of apps){const l=JSON.stringify(a).length;if(cur.length&&sz+l>per){pages.push(cur);cur=[];sz=0}cur.push(a);sz+=l}pages.push(cur);
+/* ---- imágenes como archivos en img/ ---- */
+const hash=t=>{let h=5381;for(let i=0;i<t.length;i+=7)h=((h<<5)+h+t.charCodeAt(i))|0;return(h>>>0).toString(36)+t.length.toString(36)};
+const bin=b=>Uint8Array.from(atob(b),c=>c.charCodeAt(0));
+const sh=(v,l)=>v&&v.startsWith('data:')?shrink(v,l):v;
+function pack(){const files=[];const map=(v,n)=>{if(!v||!v.startsWith('data:'))return v;const m=v.match(/^data:image\/([\w.+-]+);base64,(.*)$/);if(!m)return v;const ext=m[1]==='jpeg'?'jpg':m[1]==='svg+xml'?'svg':m[1];const path=`img/${n}-${hash(m[2])}.${ext}`;if(!files.some(f=>f.name===path))files.push({name:path,b64:m[2]});return path};
+ const oa=apps.map(a=>({...a,img:map(a.img,a.id+'-icon'),banner:map(a.banner,a.id+'-banner'),shots:(a.shots||[]).map((x,i)=>map(x,a.id+'-s'+(i+1)))}));return{files,oa,oc:{...cfg,logo:map(cfg.logo,'logo')}}}
+function build(pk=pack()){const per=12e6,pages=[];let cur=[],sz=0;for(const a of pk.oa){const l=JSON.stringify(a).length;if(cur.length&&sz+l>per){pages.push(cur);cur=[];sz=0}cur.push(a);sz+=l}pages.push(cur);
  const names=pages.map((_,i)=>i?`apps-${i+1}.json`:'apps.json'),url=cfg.siteUrl.replace(/\/?$/,'/'),day=new Date().toISOString().slice(0,10);
- return[...pages.map((p,i)=>({name:names[i],data:JSON.stringify(p)})),{name:'pages.json',data:JSON.stringify({total:apps.length,pages:names})},{name:'config.json',data:JSON.stringify(cfg,null,1)},
+ return[...pk.files,...pages.map((p,i)=>({name:names[i],data:JSON.stringify(p)})),{name:'pages.json',data:JSON.stringify({total:apps.length,pages:names})},{name:'config.json',data:JSON.stringify(pk.oc,null,1)},
  {name:'sitemap.xml',data:`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${esc(url)}</loc><lastmod>${day}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>\n</urlset>\n`},
  {name:'robots.txt',data:`User-agent: *\nAllow: /\n\nSitemap: ${url}sitemap.xml\n`}]}
 function save(n,blob){const l=document.createElement('a');l.href=URL.createObjectURL(blob);l.download=n;document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(l.href),2000)}
-async function zip(){const f=build();if(window.JSZip){const z=new JSZip();f.forEach(x=>z.file(x.name,x.data));save('modsapk-sitio.zip',await z.generateAsync({type:'blob',compression:'DEFLATE'}))}else f.forEach((x,i)=>setTimeout(()=>save(x.name,new Blob([x.data])),i*400));dirty=false;stat();toast('Descarga lista')}
+async function zip(){const f=build();if(window.JSZip){const z=new JSZip();f.forEach(x=>x.b64?z.file(x.name,x.b64,{base64:true}):z.file(x.name,x.data));save('modsapk-sitio.zip',await z.generateAsync({type:'blob',compression:'DEFLATE'}))}else f.forEach((x,i)=>setTimeout(()=>save(x.name.split('/').pop(),new Blob([x.b64?bin(x.b64):x.data])),i*400));dirty=false;stat();toast('Descarga lista')}
 
 const b64=t=>{const b=new TextEncoder().encode(t);let s='';for(let i=0;i<b.length;i+=32768)s+=String.fromCharCode.apply(null,b.subarray(i,i+32768));return btoa(s)};
 const gsave=()=>{try{localStorage.setItem('gh',JSON.stringify(gh.keep?gh:{...gh,token:''}))}catch(_){}};
 async function publish(){if(!gh.owner||!gh.repo||!gh.token)return toast('Completa usuario, repositorio y token',4000);
- const f=build(),base=`https://api.github.com/repos/${gh.owner}/${gh.repo}/contents/`,H={Authorization:'Bearer '+gh.token,Accept:'application/vnd.github+json','Content-Type':'application/json'};
+ const pk=pack(),f=build(pk),base=`https://api.github.com/repos/${gh.owner}/${gh.repo}/contents/`,H={Authorization:'Bearer '+gh.token,Accept:'application/vnd.github+json','Content-Type':'application/json'};
  try{for(let i=0;i<f.length;i++){const x=f[i];toast(`Publicando ${i+1}/${f.length}: ${x.name}…`,120000);
   let sha;const g=await fetch(base+x.name+'?ref='+encodeURIComponent(gh.branch),{headers:H});
-  if(g.ok)sha=(await g.json()).sha;else if(g.status!==404)throw g.status;
-  const r=await fetch(base+x.name,{method:'PUT',headers:H,body:JSON.stringify({message:'Actualizar '+x.name+' desde el panel',content:b64(x.data),branch:gh.branch,sha})});
+  if(g.ok){if(x.b64)continue;sha=(await g.json()).sha}else if(g.status!==404)throw g.status;
+  const r=await fetch(base+x.name,{method:'PUT',headers:H,body:JSON.stringify({message:'Actualizar '+x.name+' desde el panel',content:x.b64||b64(x.data),branch:gh.branch,sha})});
   if(!r.ok)throw r.status}
-  dirty=false;stat();toast('Publicado. El sitio se actualiza en 1–2 minutos.',6000)}
+  apps=pk.oa;cfg=pk.oc;dirty=false;draw();toast('Publicado. El sitio se actualiza en 1–2 minutos.',6000)}
  catch(c){toast(c===401?'Token inválido o vencido':c===403?'El token no tiene permiso de escritura':c===404?'Repositorio o rama no encontrados':c===422?'GitHub rechazó el archivo (revisa la rama)':'Error de red al publicar',6000)}}
 /* ---- eventos ---- */
 document.addEventListener('click',async e=>{const t=e.target.closest('button');if(!t)return;
