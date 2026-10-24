@@ -32,8 +32,10 @@ main{max-width:760px;margin:auto;padding:14px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let apps=[],sel=-1,tab='apps',dirty=false,cfg={siteName:'modsapk',tagline:'Apps y juegos modificados para Android',siteUrl:'https://TU-USUARIO.github.io/TU-REPO/',logo:'',rgb:false,categories:['Juegos','Apps'],colors:{bg:'#0b0d12',card:'#151922',text:'#eef1f6',accent:'#39ff6a'}};
+let apps=[],sel=-1,tab='apps',dirty=false,cfg={siteName:'modsapk',tagline:'Apps y juegos modificados para Android',siteUrl:'https://TU-USUARIO.github.io/TU-REPO/',logo:'',rgb:false,grads:{bg:{on:false,angle:135,colors:['#0b0d12','#1a1f3a']},accent:{on:false,angle:90,colors:['#39ff6a','#3b9cff']}},categories:['Juegos','Apps'],colors:{bg:'#0b0d12',card:'#151922',text:'#eef1f6',accent:'#39ff6a'}};
 let gh={owner:'',repo:'',branch:'main',token:'',keep:true};try{Object.assign(gh,JSON.parse(localStorage.getItem('gh')||'{}'))}catch(_){}
+const gcss=g=>`linear-gradient(${g.angle}deg,${g.colors.join(',')})`;
+const GN={bg:'Fondo del sitio',accent:'Botones y acento'};
 const PRE={'Neón verde':'#39ff6a','Azul':'#3b9cff','Rosa':'#ff4fa3','Naranja':'#ff8a39','Violeta':'#a66bff'};
 const toast=(t,ms=2600)=>{const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',ms)};
 const mark=()=>{dirty=true;stat()};
@@ -78,8 +80,14 @@ function vSite(){const c=cfg.colors;return`<div class="box"><b>Identidad</b>
 <div class="box"><b>Colores</b><div class="g2">${[['bg','Fondo'],['card','Tarjetas'],['text','Texto'],['accent','Acento']].map(([k,n])=>`<label>${n}<input type="color" data-col="${k}" value="${c[k]}"></label>`).join('')}</div>
 <div class="sh">${Object.entries(PRE).map(([n,v])=>`<button class="btn" data-pre="${v}">${n}</button>`).join('')}</div>
 <div class="pv" style="background:${c.card};color:${c.text}"><span style="background:${c.accent};width:40px;height:40px;border-radius:10px"></span><span>Vista previa · fondo de tarjeta</span></div>
-<label class="ck" style="margin-top:14px"><input type="checkbox" data-rgb ${cfg.rgb?'checked':''}> Modo RGB multicolor activado por defecto</label>
-<p class="mut">Los visitantes también pueden activarlo o apagarlo con el botón RGB del sitio.</p></div>
+<label class="ck" style="margin-top:14px"><input type="checkbox" data-rgb ${cfg.rgb?'checked':''}> Activar modo RGB multicolor en el sitio</label>
+<p class="mut">Solo se controla desde aquí: los visitantes no ven ningún botón. Publica para aplicar el cambio.</p></div>
+${['bg','accent'].map(k=>{const g=cfg.grads[k];return`<div class="box"><b>Degradado: ${GN[k]}</b>
+<label class="ck"><input type="checkbox" data-gon="${k}" ${g.on?'checked':''}> Usar degradado (si no, se usa el color liso)</label>
+<div class="pv" id="pv-${k}" style="background:${gcss(g)};height:44px"></div>
+<label>Ángulo: <span id="ang-${k}">${g.angle}</span>°<input type="range" min="0" max="360" data-gang="${k}" value="${g.angle}"></label>
+<div class="sh">${g.colors.map((c,i)=>`<div><input type="color" style="width:64px" data-gcol="${k}:${i}" value="${c}"><button data-grm="${k}:${i}" aria-label="Quitar color">×</button></div>`).join('')}</div>
+<button class="btn" data-gadd="${k}" style="margin-top:10px" ${g.colors.length>=8?'disabled':''}>Añadir color (${g.colors.length}/8)</button></div>`}).join('')}
 <div class="box"><b>Categorías</b><label>Una por línea<textarea data-cats rows="4">${esc(cfg.categories.join('\n'))}</textarea></label>
 <p class="mut">Si renombras una categoría, cambia también la categoría de las apps que ya la usan.</p></div>`}
 function vPub(){const f=build();return`<div class="box"><b>Dirección del sitio</b><label>URL pública (termina en /)<input data-c="siteUrl" value="${esc(cfg.siteUrl)}"></label>
@@ -101,9 +109,9 @@ const sh=(v,l)=>v&&v.startsWith('data:')?shrink(v,l):v;
 function pack(){const files=[];const map=(v,n)=>{if(!v||!v.startsWith('data:'))return v;const m=v.match(/^data:image\/([\w.+-]+);base64,(.*)$/);if(!m)return v;const ext=m[1]==='jpeg'?'jpg':m[1]==='svg+xml'?'svg':m[1];const path=`img/${n}-${hash(m[2])}.${ext}`;if(!files.some(f=>f.name===path))files.push({name:path,b64:m[2]});return path};
  const oa=apps.map(a=>({...a,img:map(a.img,a.id+'-icon'),banner:map(a.banner,a.id+'-banner'),shots:(a.shots||[]).map((x,i)=>map(x,a.id+'-s'+(i+1)))}));return{files,oa,oc:{...cfg,logo:map(cfg.logo,'logo')}}}
 function build(pk=pack()){const per=12e6,pages=[];let cur=[],sz=0;for(const a of pk.oa){const l=JSON.stringify(a).length;if(cur.length&&sz+l>per){pages.push(cur);cur=[];sz=0}cur.push(a);sz+=l}pages.push(cur);
- const names=pages.map((_,i)=>i?`apps-${i+1}.json`:'apps.json'),url=cfg.siteUrl.replace(/\/?$/,'/'),day=new Date().toISOString().slice(0,10);
+ const names=pages.map((_,i)=>i?`apps-${i+1}.json`:'apps.json'),url=cfg.siteUrl.replace(/\/?$/,'/'),day=new Date().toISOString().slice(0,10);const extra=Array.from({length:Math.max(0,Math.ceil(apps.length/15)-1)},(_,i)=>`  <url><loc>${esc(url)}?p=${i+2}</loc><lastmod>${day}</lastmod><priority>0.6</priority></url>\n`).join('');
  return[...pk.files,...pages.map((p,i)=>({name:names[i],data:JSON.stringify(p)})),{name:'pages.json',data:JSON.stringify({total:apps.length,pages:names})},{name:'config.json',data:JSON.stringify(pk.oc,null,1)},
- {name:'sitemap.xml',data:`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${esc(url)}</loc><lastmod>${day}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>\n</urlset>\n`},
+ {name:'sitemap.xml',data:`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${esc(url)}</loc><lastmod>${day}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>\n${extra}</urlset>\n`},
  {name:'robots.txt',data:`User-agent: *\nAllow: /\n\nSitemap: ${url}sitemap.xml\n`}]}
 function save(n,blob){const l=document.createElement('a');l.href=URL.createObjectURL(blob);l.download=n;document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(l.href),2000)}
 async function zip(){const f=build();if(window.JSZip){const z=new JSZip();f.forEach(x=>x.b64?z.file(x.name,x.b64,{base64:true}):z.file(x.name,x.data));save('modsapk-sitio.zip',await z.generateAsync({type:'blob',compression:'DEFLATE'}))}else f.forEach((x,i)=>setTimeout(()=>save(x.name.split('/').pop(),new Blob([x.b64?bin(x.b64):x.data])),i*400));dirty=false;stat();toast('Descarga lista')}
@@ -129,10 +137,15 @@ document.addEventListener('click',async e=>{const t=e.target.closest('button');i
  else if(t.id==='opt')optimize();
  else if(t.dataset.rs!==undefined){apps[sel].shots.splice(+t.dataset.rs,1);mark();draw()}
  else if(t.dataset.rl!==undefined){cfg.logo='';mark();draw()}
+ else if(t.dataset.gadd){const g=cfg.grads[t.dataset.gadd];if(g.colors.length<8){g.colors.push('#ffffff');mark();draw()}}
+ else if(t.dataset.grm){const[k,i]=t.dataset.grm.split(':'),g=cfg.grads[k];if(g.colors.length>2){g.colors.splice(+i,1);mark();draw()}else toast('Un degradado necesita al menos 2 colores')}
  else if(t.dataset.pre){cfg.colors.accent=t.dataset.pre;mark();draw()}
  else if(t.id==='zip')zip();else if(t.id==='pub')publish()});
 document.addEventListener('input',e=>{const t=e.target,a=apps[sel];
  if(t.dataset.k&&a){const k=t.dataset.k;a[k]=t.type==='checkbox'?t.checked:k==='feats'?t.value.split('\n').map(s=>s.trim()).filter(Boolean):t.value;if(k==='name'&&/^app-/.test(a.id)){a.id=t.value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||a.id}mark()}
+ else if(t.dataset.gon){cfg.grads[t.dataset.gon].on=t.checked;mark()}
+ else if(t.dataset.gang){const k=t.dataset.gang;cfg.grads[k].angle=+t.value;$('#ang-'+k).textContent=t.value;$('#pv-'+k).style.background=gcss(cfg.grads[k]);mark()}
+ else if(t.dataset.gcol){const[k,i]=t.dataset.gcol.split(':');cfg.grads[k].colors[+i]=t.value;$('#pv-'+k).style.background=gcss(cfg.grads[k]);mark()}
  else if(t.dataset.g){gh[t.dataset.g]=t.value.trim();gsave()}
  else if(t.dataset.gk!==undefined){gh.keep=t.checked;gsave()}
  else if(t.dataset.c){cfg[t.dataset.c]=t.value;mark()}
@@ -140,7 +153,7 @@ document.addEventListener('input',e=>{const t=e.target,a=apps[sel];
  else if(t.dataset.rgb!==undefined){cfg.rgb=t.checked;mark()}
  else if(t.dataset.cats!==undefined){cfg.categories=t.value.split('\n').map(s=>s.trim()).filter(Boolean);mark()}});
 document.addEventListener('change',async e=>{const t=e.target;
- if(t.id==='fImp'){let n=0;const all=[];for(const f of t.files){try{const j=JSON.parse(await f.text());if(Array.isArray(j))all.push(...j);else if(j.siteName){cfg={...cfg,...j,colors:{...cfg.colors,...j.colors}}}}catch(_){toast('Archivo no válido: '+f.name)}}
+ if(t.id==='fImp'){let n=0;const all=[];for(const f of t.files){try{const j=JSON.parse(await f.text());if(Array.isArray(j))all.push(...j);else if(j.siteName){cfg={...cfg,...j,colors:{...cfg.colors,...j.colors},grads:{...cfg.grads,...j.grads}}}}catch(_){toast('Archivo no válido: '+f.name)}}
   if(all.length){apps=all;sel=-1;dirty=false}t.value='';toast(`${apps.length} apps importadas`);draw()}
  else if(t.dataset.up&&t.files.length){const a=apps[sel],k=t.dataset.up;toast('Comprimiendo imagen…',30000);
   if(k==='shots'){for(const f of t.files)(a.shots=a.shots||[]).push(await shrink(await rd(f),LIM.shot))}else a[k]=await shrink(await rd(t.files[0]),LIM[k]);mark();toast('Imagen lista');draw()}

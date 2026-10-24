@@ -12,10 +12,10 @@
 <meta property="og:description" content="Descarga APK de apps y juegos modificados para Android.">
 <style>
 @property --a{syntax:'<angle>';inherits:false;initial-value:0deg}
-:root{--bg:#0b0d12;--card:#151922;--text:#eef1f6;--accent:#39ff6a;--on:#000;--mut:color-mix(in srgb,var(--text) 60%,transparent);--line:color-mix(in srgb,var(--text) 12%,transparent);--h:0}
+:root{--bg:#0b0d12;--card:#151922;--text:#eef1f6;--accent:#39ff6a;--on:#000;--mut:color-mix(in srgb,var(--text) 60%,transparent);--line:color-mix(in srgb,var(--text) 12%,transparent);--h:0;--gbg:none;--ga:var(--accent)}
 html.rgb{--accent:hsl(var(--h) 100% 60%)}
 *{box-sizing:border-box;margin:0}
-body{background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+body{background:var(--gbg) fixed,var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
 a,button{font:inherit;color:inherit}
 button{cursor:pointer;background:none;border:0}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -26,13 +26,12 @@ html.rgb header{border-image:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f
 .brand img{width:32px;height:32px;border-radius:8px;object-fit:cover}
 .search{flex:1;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:9px 16px;color:var(--text)}
 .ico{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card)}
-html.rgb #rgbBtn{border-color:var(--accent);box-shadow:0 0 12px var(--accent)}
 main{max-width:1100px;margin:auto;padding:16px}
 h1{font-size:1.5rem;line-height:1.2}
 .lead{color:var(--mut);margin:4px 0 16px}
 .chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px}
 .chip{padding:7px 16px;border-radius:999px;border:1px solid var(--line);background:var(--card);white-space:nowrap}
-.chip[aria-pressed=true]{background:var(--accent);color:var(--on);border-color:var(--accent);font-weight:600}
+.chip[aria-pressed=true]{background:var(--ga);color:var(--on);border-color:var(--accent);font-weight:600}
 h2{font-size:1.15rem;margin:22px 0 10px}
 .row{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scroll-snap-type:x proximity}
 .row .card{flex:0 0 150px;scroll-snap-align:start}
@@ -44,7 +43,9 @@ html.rgb .card{border-color:transparent;background:linear-gradient(var(--card),v
 .ic{width:64px;height:64px;border-radius:16px;object-fit:cover;display:grid;place-items:center;font-weight:800;font-size:1.6rem;color:#fff;flex:none}
 .nm{font-weight:600;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .mt{color:var(--mut);font-size:.82rem}
-.more{display:block;margin:18px auto;padding:10px 24px;border-radius:999px;border:1px solid var(--accent);color:var(--accent)}
+.pager{display:flex;gap:12px;justify-content:center;align-items:center;flex-wrap:wrap;margin:22px 0}.pager span{color:var(--mut)}
+.more{display:inline-block;padding:10px 24px;border-radius:999px;border:1px solid var(--accent);color:var(--accent);text-decoration:none}
+.more.next{background:var(--ga);color:var(--on);font-weight:700}
 .empty{color:var(--mut);padding:30px 0;text-align:center}
 dialog{width:min(560px,100%);max-height:92vh;margin:auto;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:20px;padding:0;overflow:auto}
 dialog::backdrop{background:#000a}
@@ -56,7 +57,7 @@ dialog::backdrop{background:#000a}
 .shots img{height:200px;border-radius:12px;flex:none}
 .body{padding:0 18px 18px}
 .body ul{padding-left:20px;margin:8px 0}
-.dl{display:block;text-align:center;margin-top:16px;padding:14px;border-radius:14px;background:var(--accent);color:var(--on);font-weight:700;text-decoration:none}
+.dl{display:block;text-align:center;margin-top:16px;padding:14px;border-radius:14px;background:var(--ga);color:var(--on);font-weight:700;text-decoration:none}
 footer{max-width:1100px;margin:30px auto 0;padding:20px 16px;color:var(--mut);font-size:.85rem;border-top:1px solid var(--line)}
 @media(prefers-reduced-motion:reduce){html.rgb .card{animation:none}}
 </style>
@@ -64,8 +65,7 @@ footer{max-width:1100px;margin:30px auto 0;padding:20px 16px;color:var(--mut);fo
 <body>
 <header><div class="bar">
 <div class="brand" id="brand"></div>
-<input class="search" id="q" type="search" placeholder="Buscar apps y juegos" aria-label="Buscar">
-<button class="ico" id="rgbBtn" aria-label="Modo RGB" title="Modo RGB">RGB</button>
+<input class="search" id="q" type="search" placeholder="Buscar apps y juegos por nombre" enterkeyhint="search" aria-label="Buscar">
 </div></header>
 <main>
 <h1 id="h1"></h1>
@@ -79,12 +79,14 @@ footer{max-width:1100px;margin:30px auto 0;padding:20px 16px;color:var(--mut);fo
 <script>
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const D={siteName:'modsapk',tagline:'Apps y juegos modificados para Android',siteUrl:'',logo:'',rgb:false,categories:['Juegos','Apps'],colors:{bg:'#0b0d12',card:'#151922',text:'#eef1f6',accent:'#39ff6a'}};
-let cfg=D,apps=[],cat='Todo',q='',shown=24,rgb=false;
+let cfg=D,apps=[],cat='Todo',q='',pg=1,rgb=false;
 const get=async u=>{const r=await fetch(u+'?v='+Date.now());if(!r.ok)throw 0;return r.json()};
 const col=c=>/^#[0-9a-f]{3,8}$/i.test(c||'')?c:'#444';
 const lum=h=>{h=h.replace('#','');if(h.length==3)h=[...h].map(x=>x+x).join('');const[r,g,b]=[0,2,4].map(i=>parseInt(h.substr(i,2),16));return(r*299+g*587+b*114)/255000};
 const ic=a=>a.img?`<img class="ic" src="${esc(a.img)}" alt="${esc(a.name)}" width="64" height="64" loading="lazy">`:`<span class="ic" style="background:linear-gradient(135deg,${col(a.c1)},${col(a.c2)})">${esc((a.name||'?').trim()[0]||'?')}</span>`;
-function theme(){const c=cfg.colors;const s=document.documentElement.style;s.setProperty('--bg',c.bg);s.setProperty('--card',c.card);s.setProperty('--text',c.text);s.setProperty('--accent',c.accent);s.setProperty('--on',lum(c.accent)>.55?'#000':'#fff');
+function theme(){const c=cfg.colors;const s=document.documentElement.style;s.setProperty('--bg',c.bg);s.setProperty('--card',c.card);s.setProperty('--text',c.text);s.setProperty('--accent',c.accent);const G=cfg.grads||{},gr=x=>x&&x.on&&(x.colors||[]).length>1?`linear-gradient(${Math.min(360,Math.max(0,+x.angle||0))}deg,${x.colors.slice(0,8).map(col).join(',')})`:'',ga=gr(G.accent);
+ s.setProperty('--gbg',gr(G.bg)||'none');s.setProperty('--ga',ga||'var(--accent)');
+ const L=ga?G.accent.colors.slice(0,8).reduce((n,x)=>n+lum(col(x)),0)/Math.min(8,G.accent.colors.length):lum(c.accent);s.setProperty('--on',L>.55?'#000':'#fff');
  document.querySelector('meta[name=theme-color]').content=c.bg;
  document.title=`${cfg.siteName} | ${cfg.tagline}`;
  $('#brand').innerHTML=(cfg.logo?`<img src="${esc(cfg.logo)}" alt="" width="32" height="32">`:'')+`<span>${esc(cfg.siteName)}</span>`;
@@ -93,17 +95,25 @@ function theme(){const c=cfg.colors;const s=document.documentElement.style;s.set
  if(cfg.logo){let l=document.querySelector('link[rel=icon]')||document.head.appendChild(Object.assign(document.createElement('link'),{rel:'icon'}));l.href=cfg.logo}
  if(cfg.siteUrl){let l=document.querySelector('link[rel=canonical]')||document.head.appendChild(Object.assign(document.createElement('link'),{rel:'canonical'}));l.href=cfg.siteUrl}
  const m=(p,v)=>{let e=document.querySelector(`meta[property="${p}"]`);e&&(e.content=v)};m('og:title',document.title);m('og:description',cfg.tagline)}
-function setRgb(on){rgb=on;document.documentElement.classList.toggle('rgb',on);try{localStorage.setItem('rgb',on?1:0)}catch(_){}}
+function setRgb(on){rgb=on;document.documentElement.classList.toggle('rgb',on)}
 let hue=0;setInterval(()=>{if(rgb&&!matchMedia('(prefers-reduced-motion:reduce)').matches){hue=(hue+3)%360;document.documentElement.style.setProperty('--h',hue)}},60);
 function card(a){return`<button class="card" data-id="${esc(a.id)}">${ic(a)}<span class="nm">${esc(a.name)}</span><span class="mt">${esc(a.cat)} · ${esc(a.size||'')}${a.rating?' · ★'+esc(a.rating):''}</span></button>`}
+const PER=15;
+function urlFor(n){const u=new URLSearchParams();if(cat!=='Todo')u.set('c',cat);if(q)u.set('q',q);if(n>1)u.set('p',n);const x=u.toString();return location.pathname+(x?'?'+x:'')}
+function go(rep){history[rep?'replaceState':'pushState'](null,'',urlFor(pg));render();if(!rep)scrollTo(0,0)}
+function readURL(){const u=new URLSearchParams(location.search);cat=u.get('c')||'Todo';q=u.get('q')||'';pg=Math.max(1,+u.get('p')||1)}
 function render(){
  $('#chips').innerHTML=['Todo',...cfg.categories].map(c=>`<button class="chip" aria-pressed="${c===cat}" data-cat="${esc(c)}">${esc(c)}</button>`).join('');
  const t=q.toLowerCase(),list=apps.filter(a=>(cat==='Todo'||a.cat===cat)&&(!t||[a.name,a.sub,a.cat,a.dev].join(' ').toLowerCase().includes(t)));
+ const pages=Math.max(1,Math.ceil(list.length/PER));pg=Math.min(pg,pages);
  let h='';
- if(cat==='Todo'&&!t){const f=apps.filter(a=>a.featured);if(f.length)h+=`<h2>Destacados</h2><div class="row">${f.map(card).join('')}</div>`}
- h+=`<h2>${t?'Resultados':cat==='Todo'?'Todo el catálogo':esc(cat)}</h2>`;
- h+=list.length?`<div class="grid">${list.slice(0,shown).map(card).join('')}</div>`+(list.length>shown?'<button class="more" id="more">Ver más</button>':''):'<p class="empty">No hay resultados.</p>';
- $('#out').innerHTML=h}
+ if(pg===1&&cat==='Todo'&&!t){const f=apps.filter(a=>a.featured);if(f.length)h+=`<h2>Destacados</h2><div class="row">${f.map(card).join('')}</div>`}
+ h+=`<h2>${t?'Resultados para “'+esc(q)+'”':(cat==='Todo'?'Todo el catálogo':esc(cat))+(pg>1?' · Página '+pg:'')}</h2>`;
+ h+=list.length?`<div class="grid">${list.slice((pg-1)*PER,pg*PER).map(card).join('')}</div>`:'<p class="empty">No hay resultados. Prueba con otro nombre.</p>';
+ if(pages>1)h+=`<nav class="pager" aria-label="Páginas">${pg>1?`<a class="more" href="${urlFor(pg-1)}" data-pg="${pg-1}">Anterior</a>`:''}<span>Página ${pg} de ${pages}</span>${pg<pages?`<a class="more next" href="${urlFor(pg+1)}" data-pg="${pg+1}">Ver más</a>`:''}</nav>`;
+ $('#out').innerHTML=h;
+ document.title=(pg>1?`Página ${pg} | `:'')+`${cfg.siteName} | ${cfg.tagline}`;
+ const cl=document.querySelector('link[rel=canonical]');if(cl&&cfg.siteUrl)cl.href=cfg.siteUrl+(cat==='Todo'&&!t&&pg>1?'?p='+pg:'')}
 function open(id){const a=apps.find(x=>x.id===id);if(!a)return;
  const link=/^https?:\/\//.test(a.link||'')?esc(a.link):'#';
  $('#sheet').innerHTML=`<button class="x" data-close>Cerrar</button>${a.banner?`<img class="ban" src="${esc(a.banner)}" alt="">`:''}
@@ -112,20 +122,20 @@ function open(id){const a=apps.find(x=>x.id===id);if(!a)return;
  <div class="body"><p>${esc(a.sub||'')}</p>${a.desc?`<p style="white-space:pre-line;margin-top:8px">${esc(a.desc)}</p>`:''}${(a.feats||[]).length?`<ul>${a.feats.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:''}
  <a class="dl" href="${link}" target="_blank" rel="noopener nofollow">Descargar APK</a></div>`;
  $('#sheet').showModal();history.replaceState(null,'','#'+a.id)}
-document.addEventListener('click',e=>{const t=e.target.closest('[data-id],[data-cat],[data-close],#more');if(!t)return;
- if(t.dataset.id)open(t.dataset.id);else if(t.dataset.cat){cat=t.dataset.cat;shown=24;render()}else if(t.dataset.close!==undefined)$('#sheet').close();else{shown+=24;render()}});
+document.addEventListener('click',e=>{const t=e.target.closest('[data-id],[data-cat],[data-close],[data-pg]');if(!t)return;
+ if(t.dataset.id)open(t.dataset.id);else if(t.dataset.cat){cat=t.dataset.cat;pg=1;go()}else if(t.dataset.close!==undefined)$('#sheet').close();else{e.preventDefault();pg=+t.dataset.pg;go()}});
 $('#sheet').addEventListener('click',e=>{if(e.target.id==='sheet')e.target.close()});
 $('#sheet').addEventListener('close',()=>history.replaceState(null,'',location.pathname+location.search));
-$('#q').addEventListener('input',e=>{q=e.target.value;shown=24;render()});
-$('#rgbBtn').addEventListener('click',()=>setRgb(!rgb));
+$('#q').addEventListener('input',e=>{q=e.target.value;pg=1;go(true)});
+addEventListener('popstate',()=>{readURL();$('#q').value=q;render()});
 function seo(){if(!apps.length)return;const s=document.createElement('script');s.type='application/ld+json';
  s.textContent=JSON.stringify({'@context':'https://schema.org','@type':'ItemList',itemListElement:apps.map((a,i)=>({'@type':'ListItem',position:i+1,item:{'@type':'SoftwareApplication',name:a.name,description:a.sub||a.name,applicationCategory:a.cat==='Juegos'?'GameApplication':'MobileApplication',operatingSystem:'Android',softwareVersion:a.ver||undefined,offers:{'@type':'Offer',price:0,priceCurrency:'USD'}}}))});document.head.appendChild(s)}
 (async()=>{
  try{cfg={...D,...await get('config.json')};cfg.colors={...D.colors,...cfg.colors}}catch(_){}
- theme();let saved=null;try{saved=localStorage.getItem('rgb')}catch(_){}setRgb(saved===null?!!cfg.rgb:saved==='1');
+ theme();setRgb(cfg.rgb===true);
  try{let files=['apps.json'];try{files=(await get('pages.json')).pages||files}catch(_){}
   apps=(await Promise.all(files.map(get))).flat()}catch(_){$('#out').innerHTML='<p class="empty">No se pudo cargar el catálogo.</p>';return}
- render();seo();const id=decodeURIComponent(location.hash.slice(1));if(id)open(id)})();
+ readURL();$('#q').value=q;render();seo();const id=decodeURIComponent(location.hash.slice(1));if(id)open(id)})();
 </script>
 </body>
 </html>
